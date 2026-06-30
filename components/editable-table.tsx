@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import clsx from "clsx";
 import { SheetColumn, SheetName, GridRow } from "@/lib/types";
 
@@ -30,10 +30,6 @@ function EditableCell({
   const [value, setValue] = useState(initialValue);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
 
   async function commit(nextValue: string) {
     if (!column.editable || nextValue === initialValue) {
@@ -177,7 +173,13 @@ export function EditableTable(props: EditableTableProps) {
               <tr key={row.id} className="align-top">
                 {columns.map((column) => (
                   <td key={`${row.id}-${column.key}`} className="rounded-2xl bg-white/80 px-3 py-3">
-                    <EditableCell sheet={sheet} row={row} column={column} onCommit={commit} />
+                    <EditableCell
+                      key={`${row.id}-${column.key}-${String(row[column.key] ?? "")}`}
+                      sheet={sheet}
+                      row={row}
+                      column={column}
+                      onCommit={commit}
+                    />
                   </td>
                 ))}
               </tr>
