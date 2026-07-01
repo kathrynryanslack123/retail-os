@@ -9,6 +9,46 @@ Next.js command center for a live retail pop-up event with two-way Google Sheets
 - Tailwind CSS
 - Google Sheets API via server-side route handlers
 
+## Architecture diagram
+
+```mermaid
+flowchart LR
+  user["Event operator<br/>Browser"]
+  gpt["ChatGPT custom GPT<br/>Actions"]
+  ui["Next.js App Router<br/>CommandCenter UI"]
+  table["EditableTable cells"]
+  dataApi["GET /api/sheet/data"]
+  updateApi["PATCH /api/sheet/update"]
+  actionRead["GET /api/actions/command-center"]
+  actionWrite["POST /api/actions/update-cell"]
+  openApi["GET /api/openapi.json"]
+  sheetService["lib/sheets.ts<br/>validation, mapping, alerts"]
+  config["lib/sheet-config.ts<br/>tabs, ranges, editable columns"]
+  google["Google Sheets API"]
+  spreadsheet["Retail event spreadsheet<br/>Dashboard + 8 tracker tabs"]
+
+  user --> ui
+  ui --> table
+  ui -- initial server render --> sheetService
+  ui -- 20s polling --> dataApi
+  table -- cell edits --> updateApi
+
+  gpt -- imports schema --> openApi
+  gpt -- reads live state --> actionRead
+  gpt -- writes editable cells --> actionWrite
+
+  dataApi --> sheetService
+  updateApi --> sheetService
+  actionRead --> sheetService
+  actionWrite --> sheetService
+  openApi -. documents .-> actionRead
+  openApi -. documents .-> actionWrite
+
+  sheetService --> config
+  sheetService -- batchGet / values.update --> google
+  google --> spreadsheet
+```
+
 ## Connected spreadsheet
 
 This app targets:
