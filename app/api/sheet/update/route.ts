@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isRetailEventOsEnabled } from "@/lib/feature-flags";
 import { sheetDefinitions } from "@/lib/sheet-config";
 import { coerceInputValue, updateSheetCell } from "@/lib/sheets";
 import { SheetName, SheetUpdatePayload } from "@/lib/types";
@@ -45,6 +46,10 @@ function parsePayload(body: unknown): SheetUpdatePayload {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!isRetailEventOsEnabled()) {
+    return NextResponse.json({ error: "Feature disabled." }, { status: 404 });
+  }
+
   try {
     const payload = parsePayload(await request.json());
     await updateSheetCell(payload);

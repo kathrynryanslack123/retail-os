@@ -1,3 +1,10 @@
+## Retail Event OS feature flag
+
+Set `RETAIL_EVENT_OS_ENABLED=true` to enable the live Google Sheets-backed command center and sheet API routes.
+
+When the flag is unset or set to any other value, the app renders a paused rollout screen and the `/api/sheet/*` routes return
+404 responses without contacting Google Sheets.
+
 > Why do I have a folder named ".vercel" in my project?
 The ".vercel" folder is created when you link a directory to a Vercel project.
 
