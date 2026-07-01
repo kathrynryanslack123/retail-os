@@ -28,15 +28,24 @@ function SetupRequired({ message }: { message: string }) {
   );
 }
 
-export default async function Page() {
+async function loadInitialData() {
   try {
-    const initialData = await getCommandCenterData();
-    return <CommandCenter initialData={initialData} />;
+    return { data: await getCommandCenterData(), setupError: null };
   } catch (error) {
     if (error instanceof GoogleSheetsConfigurationError) {
-      return <SetupRequired message={error.message} />;
+      return { data: null, setupError: error.message };
     }
 
     throw error;
   }
+}
+
+export default async function Page() {
+  const { data, setupError } = await loadInitialData();
+
+  if (setupError) {
+    return <SetupRequired message={setupError} />;
+  }
+
+  return <CommandCenter initialData={data} />;
 }
