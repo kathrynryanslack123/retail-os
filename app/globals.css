@@ -5,6 +5,7 @@
 :root {
   color-scheme: light;
   --background: #4a0f14;
+  --background: #f7f3ea;
   --foreground: #16211d;
   --panel: rgba(255, 252, 246, 0.88);
   --panel-strong: rgba(255, 252, 246, 0.96);
@@ -26,6 +27,9 @@ body {
     radial-gradient(circle at top left, rgba(168, 45, 52, 0.45), transparent 34%),
     radial-gradient(circle at top right, rgba(111, 20, 32, 0.55), transparent 30%),
     linear-gradient(180deg, #5b1118 0%, #3f0b12 52%, #26070c 100%);
+    radial-gradient(circle at top left, rgba(153, 219, 244, 0.35), transparent 32%),
+    radial-gradient(circle at top right, rgba(215, 241, 113, 0.3), transparent 28%),
+    linear-gradient(180deg, #f9f3e5 0%, #f2efe7 52%, #eef3ef 100%);
   color: var(--foreground);
   font-family: Aptos, "Segoe UI", "Helvetica Neue", sans-serif;
 }
