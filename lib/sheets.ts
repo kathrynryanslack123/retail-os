@@ -281,3 +281,42 @@ export function coerceInputValue(value: string, type: SheetDefinition["columns"]
 
   return value;
 }
+
+export function parseSheetUpdatePayload(body: unknown): SheetUpdatePayload {
+  if (!body || typeof body !== "object") {
+    throw new Error("Request body must be an object.");
+  }
+
+  const payload = body as Record<string, unknown>;
+
+  if (typeof payload.sheet !== "string" || !(payload.sheet in sheetDefinitions)) {
+    throw new Error("Unsupported sheet.");
+  }
+
+  const sheet = payload.sheet as SheetName;
+
+  if (typeof payload.rowNumber !== "number" || !Number.isInteger(payload.rowNumber) || payload.rowNumber < 1) {
+    throw new Error("rowNumber must be a positive integer.");
+  }
+
+  if (typeof payload.columnKey !== "string") {
+    throw new Error("columnKey must be a string.");
+  }
+
+  if (typeof payload.value !== "string" && typeof payload.value !== "number") {
+    throw new Error("value must be a string or number.");
+  }
+
+  const column = sheetDefinitions[sheet].columns.find((item) => item.key === payload.columnKey);
+
+  if (!column?.editable) {
+    throw new Error("Column is not editable.");
+  }
+
+  return {
+    sheet,
+    rowNumber: payload.rowNumber,
+    columnKey: payload.columnKey,
+    value: typeof payload.value === "string" ? coerceInputValue(payload.value, column.type) : payload.value
+  };
+}

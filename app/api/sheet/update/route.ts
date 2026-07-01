@@ -1,30 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sheetDefinitions } from "@/lib/sheet-config";
-import { coerceInputValue, updateSheetCell } from "@/lib/sheets";
-import { SheetUpdatePayload } from "@/lib/types";
+import { parseSheetUpdatePayload, updateSheetCell } from "@/lib/sheets";
 
 export const runtime = "nodejs";
 
 export async function PATCH(request: NextRequest) {
   try {
-    const payload = (await request.json()) as SheetUpdatePayload;
-    const definition = sheetDefinitions[payload.sheet];
-    const column = definition?.columns.find((item) => item.key === payload.columnKey);
-
-    if (!definition || !column) {
-      return NextResponse.json({ error: "Invalid sheet or column." }, { status: 400 });
-    }
-
-    const value = coerceInputValue(String(payload.value ?? ""), column.type);
-
-    await updateSheetCell({
-      ...payload,
-      value
-    });
-
+    const payload = parseSheetUpdatePayload(await request.json());
+    await updateSheetCell(payload);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to write to Google Sheets.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unable to update sheet cell.";
+    const status = message.includes("credentials") ? 500 : 400;
+    console.error("Unable to update sheet cell", error);
+    return NextResponse.json({ error: message }, { status });
   }
 }
