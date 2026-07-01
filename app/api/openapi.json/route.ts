@@ -22,7 +22,6 @@ const columnKeys = [
   "contentLink",
   "unitsSold",
   "inStock",
-  "location",
   "actualCost",
   "paidStatus",
   "actual"
@@ -203,7 +202,7 @@ export async function GET(request: NextRequest) {
             columnKey: {
               type: "string",
               description:
-                "Editable field key. For Merch Tracker, use unitsSold for column J, inStock for column N, and location for column O.",
+                "Editable field key. For Merch Tracker, use unitsSold for column J and inStock for column N.",
               enum: [...columnKeys]
             },
             value: {
