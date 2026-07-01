@@ -10,9 +10,55 @@ import {
   SheetUpdatePayload
 } from "@/lib/types";
 
-const spreadsheetId =
-  process.env.GOOGLE_SHEETS_SPREADSHEET_ID ||
-  "1YtkHM5x2QEY9QHp32SLqOJibYbslH8GfJ6u0uYdVLUs";
+const privateKeyBegin = "-----BEGIN PRIVATE KEY-----";
+const privateKeyEnd = "-----END PRIVATE KEY-----";
+
+export class GoogleSheetsConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GoogleSheetsConfigurationError";
+  }
+}
+
+function isPlaceholder(value: string) {
+  return /^\[.+\]$/.test(value) || value.includes("YOUR_KEY_HERE") || value.includes("project-id");
+}
+
+function getSpreadsheetId() {
+  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID?.trim();
+
+  if (!spreadsheetId || isPlaceholder(spreadsheetId)) {
+    throw new GoogleSheetsConfigurationError("Missing Google Sheets spreadsheet ID. Set GOOGLE_SHEETS_SPREADSHEET_ID.");
+  }
+
+  return spreadsheetId;
+}
+
+function isServiceAccountEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(value);
+}
+
+function isPrivateKey(value: string) {
+  return value.startsWith(privateKeyBegin) && value.endsWith(privateKeyEnd) && !isPlaceholder(value);
+}
+
+function isCredentialDecoderError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return "code" in error && error.code === "ERR_OSSL_UNSUPPORTED";
+}
+
+function normalizeSheetsError(error: unknown): never {
+  if (isCredentialDecoderError(error)) {
+    throw new GoogleSheetsConfigurationError(
+      "Invalid Google service account private key. Set GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY to the full PEM key with newline escapes."
+    );
+  }
+
+  throw error;
+}
 
 function getAlertReferenceDate() {
   const configuredDate = process.env.EVENT_QA_DATE?.trim();
@@ -31,12 +77,24 @@ function getAlertReferenceDate() {
 }
 
 function getCredentials() {
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+  const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
 
   if (!clientEmail || !privateKey) {
-    throw new Error(
+    throw new GoogleSheetsConfigurationError(
       "Missing Google Sheets credentials. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY."
+    );
+  }
+
+  if (isPlaceholder(clientEmail) || !isServiceAccountEmail(clientEmail)) {
+    throw new GoogleSheetsConfigurationError(
+      "Invalid Google service account email. Set GOOGLE_SERVICE_ACCOUNT_EMAIL to the service account's iam.gserviceaccount.com address."
+    );
+  }
+
+  if (!isPrivateKey(privateKey)) {
+    throw new GoogleSheetsConfigurationError(
+      "Invalid Google service account private key. Set GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY to the full PEM key with newline escapes."
     );
   }
 
@@ -214,14 +272,17 @@ function buildAlerts(data: Omit<CommandCenterData, "alerts">): CommandAlert[] {
 }
 
 export async function getCommandCenterData(): Promise<CommandCenterData> {
+  const spreadsheetId = getSpreadsheetId();
   const sheets = await getSheetsClient();
   const ranges = ["Dashboard!A1:H20", ...Object.values(sheetDefinitions).map((definition) => definition.range)];
 
-  const response = await sheets.spreadsheets.values.batchGet({
-    spreadsheetId,
-    ranges,
-    valueRenderOption: "FORMATTED_VALUE"
-  });
+  const response = await sheets.spreadsheets.values
+    .batchGet({
+      spreadsheetId,
+      ranges,
+      valueRenderOption: "FORMATTED_VALUE"
+    })
+    .catch(normalizeSheetsError);
 
   const [dashboardRange, ...gridRanges] = response.data.valueRanges ?? [];
   const dashboard = buildDashboardSummary(dashboardRange?.values as string[][] | undefined);
@@ -260,17 +321,20 @@ export async function updateSheetCell(payload: SheetUpdatePayload) {
     throw new Error(`Column ${payload.columnKey} is not editable in ${payload.sheet}.`);
   }
 
+  const spreadsheetId = getSpreadsheetId();
   const sheets = await getSheetsClient();
   const range = `${payload.sheet}!${column.column}${payload.rowNumber}`;
 
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [[payload.value]]
-    }
-  });
+  await sheets.spreadsheets.values
+    .update({
+      spreadsheetId,
+      range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[payload.value]]
+      }
+    })
+    .catch(normalizeSheetsError);
 }
 
 export function coerceInputValue(value: string, type: SheetDefinition["columns"][number]["type"]) {
