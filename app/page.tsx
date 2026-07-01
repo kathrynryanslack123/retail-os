@@ -1,7 +1,10 @@
 import { CommandCenter } from "@/components/command-center";
 import { getCommandCenterData, GoogleSheetsConfigurationError } from "@/lib/sheets";
+import type { CommandCenterData } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+type InitialDataResult = { data: CommandCenterData } | { setupError: string };
 
 function SetupRequired({ message }: { message: string }) {
   return (
@@ -28,12 +31,12 @@ function SetupRequired({ message }: { message: string }) {
   );
 }
 
-async function loadInitialData() {
+async function loadInitialData(): Promise<InitialDataResult> {
   try {
-    return { data: await getCommandCenterData(), setupError: null };
+    return { data: await getCommandCenterData() };
   } catch (error) {
     if (error instanceof GoogleSheetsConfigurationError) {
-      return { data: null, setupError: error.message };
+      return { setupError: error.message };
     }
 
     throw error;
@@ -41,11 +44,11 @@ async function loadInitialData() {
 }
 
 export default async function Page() {
-  const { data, setupError } = await loadInitialData();
+  const initialData = await loadInitialData();
 
-  if (setupError) {
-    return <SetupRequired message={setupError} />;
+  if ("setupError" in initialData) {
+    return <SetupRequired message={initialData.setupError} />;
   }
 
-  return <CommandCenter initialData={data} />;
+  return <CommandCenter initialData={initialData.data} />;
 }
