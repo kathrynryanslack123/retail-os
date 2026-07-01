@@ -75,7 +75,7 @@ export const sheetDefinitions: Record<SheetName, SheetDefinition> = {
       { key: "actualSales", label: "Actual Sales", column: "L", type: "currency" },
       { key: "projectedGrossSales", label: "Projected Gross Sales", column: "M", type: "currency" },
       { key: "inStock", label: "Instock", column: "N", type: "number" },
-      { key: "location", label: "Location", column: "O", type: "text", editable: true }
+      { key: "location", label: "Location", column: "O", type: "text" }
     ]
   },
   "Run of Show": {
